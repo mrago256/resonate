@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import './App.css';
 
 const App = () => {
     const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -6,6 +7,7 @@ const App = () => {
     const [selectedWords, setSelectedWords] = useState<any[]>([]);
     const [isSelecting, setIsSelecting] = useState<boolean>(false);
     const [selectionBox, setSelectionBox] = useState<{ x: number; y: number; width: number; height: number }>({ x: 0, y: 0, width: 0, height: 0 });
+    const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
 
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const imageRef = useRef<HTMLImageElement | null>(null);
@@ -29,6 +31,11 @@ const App = () => {
     const handleTextToSpeech = (inputText: any[]) => {
         const text = inputText.map((word) => word.text).join(" ");
         const speech = new SpeechSynthesisUtterance(text);
+
+        speech.onend = () => {
+            setIsSpeaking(false);
+        }
+
         window.speechSynthesis.speak(speech);
     };
 
@@ -146,6 +153,10 @@ const App = () => {
             });
 
             setSelectedWords(selectedWordsList);
+            if (isSpeaking) {
+                window.speechSynthesis.cancel();
+            }
+            setIsSpeaking(true);
             handleTextToSpeech(selectedWordsList);
         }
     };
@@ -166,40 +177,85 @@ const App = () => {
         }
     }, [selectionBox, words]);
 
-    return (
-        <div>
-            <h1>Text Selection from Image</h1>
-            <input type="file" onChange={handleImageUpload} />
-            <div id="imageContainer" style={{ position: 'relative', display: 'inline-block' }}>
-                {imageSrc && (
-                    <>
-                        <img
-                            ref={imageRef}
-                            src={imageSrc}
-                            alt="Uploaded Image"
-                            onLoad={handleImageLoad}
-                            style={{ maxWidth: '100%', display: 'block' }}
-                        />
-                        <canvas
-                            ref={canvasRef}
-                            style={{ position: 'absolute', top: 0, left: 0 }}
-                            onTouchStart={handleStart}
-                            onTouchMove={handleMove}
-                            onTouchEnd={handleEnd}
-                            onMouseDown={handleStart}
-                            onMouseMove={handleMove}
-                            onMouseUp={handleEnd}
-                        />
-                    </>
-                )}
-            </div>
+    const toggleSpeaking = () => {
+        if (!isSpeaking) {
+            handleTextToSpeech(selectedWords);
+            setIsSpeaking(true);
+        } else {
+            window.speechSynthesis.cancel();
+            setIsSpeaking(false);
+        }
+    };
 
-            <div>
+    function SelectedWords() {
+        if (imageSrc) {
+            return <div className="selected-words-box">
                 <h2>Selected Words:</h2>
                 <p>
                     {selectedWords.map((word) => word.text).join(' ')}
                 </p>
             </div>
+        }
+
+        return <></>
+    }
+
+    function Controls() {
+        if (!imageSrc) {
+            return <></>
+        }
+
+        return <div className="controls">
+            <button
+                onClick={toggleSpeaking}
+                disabled={selectedWords.length == 0}
+                style={{
+                    backgroundColor: selectedWords.length ? (isSpeaking ? '#f44336' : '#4CAF50') : '#BBBBBB',
+                    color: 'white',
+                    padding: '10px 20px',
+                    border: 'none',
+                    borderRadius: '5px',
+                    cursor: 'pointer'
+                }}
+            >
+                {isSpeaking ? 'Stop Speaking' : 'Start Speaking'}
+            </button>
+        </div>
+    }
+
+    return (
+        <div>
+            <header>
+                <h1>Resonate Text to Speech</h1>
+            </header>
+            <main>
+                <br></br>
+                <h2>Upload an Image to get Started</h2>
+                <input type="file" accept="image/*" onChange={handleImageUpload} />
+                <div id="imageContainer">
+                    {imageSrc && (
+                        <>
+                            <img
+                                ref={imageRef}
+                                src={imageSrc}
+                                alt="Uploaded Image"
+                                onLoad={handleImageLoad}
+                            />
+                            <canvas
+                                ref={canvasRef}
+                                onTouchStart={handleStart}
+                                onTouchMove={handleMove}
+                                onTouchEnd={handleEnd}
+                                onMouseDown={handleStart}
+                                onMouseMove={handleMove}
+                                onMouseUp={handleEnd}
+                            />
+                        </>
+                    )}
+                </div>
+                <SelectedWords></SelectedWords>
+                <Controls></Controls>
+            </main>
         </div>
     );
 };
