@@ -3,6 +3,22 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlay, faStop, faUpload, faVolumeUp, faTachometerAlt } from '@fortawesome/free-solid-svg-icons';
 import './App.css';
 
+declare global {
+    interface Window {
+        Tesseract: any;
+    }
+}
+
+type DetectedWord = {
+    text: string;
+    bbox: {
+        x0: number;
+        y0: number;
+        x1: number;
+        y1: number;
+    };
+};
+
 const App = () => {
     const [imageSrc, setImageSrc] = useState<string | null>(null);
     const [words, setWords] = useState<any[]>([]);
@@ -69,10 +85,7 @@ const App = () => {
             const imgElement = imageRef.current;
             const canvas = canvasRef.current;
 
-            canvas.ontouchstart = function (e) {
-                if (e.touches) e = e.touches[0];
-                return false;
-            };
+            canvas.ontouchstart = () => false;
 
             const ctx = canvas.getContext('2d');
             imageScale.current = imgElement.width / imgElement.naturalWidth;
@@ -85,11 +98,11 @@ const App = () => {
                 window.Tesseract.recognize(
                     imgElement,
                     'eng',
-                    { logger: (m) => console.log(m) }
-                ).then(({ data: { words: detectedWords } }) => {
+                    { logger: (m: any) => console.log(m) }
+                ).then(({ data: { words: detectedWords } }: { data: { words: DetectedWord[] } }) => {
                     console.log("Words:", detectedWords);
                     setWords(detectedWords);
-                    drawBoundingBoxes(detectedWords, ctx);  // Draw bounding boxes immediately after OCR
+                    drawBoundingBoxes(detectedWords, ctx!);  // Draw bounding boxes immediately after OCR
                 });
             }
         }
@@ -203,7 +216,7 @@ const App = () => {
         setIsSpeaking(false);
         setSelectedWords([]);
         setWords([]);
-        setSelectionBox({x: 0, y: 0, width: 0, height: 0});
+        setSelectionBox({ x: 0, y: 0, width: 0, height: 0 });
         setImageSrc(null);
     }
 
@@ -235,8 +248,7 @@ const App = () => {
         if (imageSrc) {
             return (
                 <div
-                    className="selected-words-box"
-                    onClick={() => resetState()}>
+                    className="selected-words-box">
                     <h2>Selected Words:</h2>
                     <p>{selectedWords.map((word) => word.text).join(' ')}</p>
                 </div>
@@ -277,11 +289,14 @@ const App = () => {
     return (
         <div>
             <header>
-                <h1>Resonate Text to Speech</h1>
+                <h1
+                    onClick={() => resetState()}>
+                    Resonate Text to Speech
+                </h1>
             </header>
             <main>
                 <br />
-                <h2>Upload an Image to get Started</h2>
+                <h2>Upload an Image to Get Started</h2>
                 <UploadInput></UploadInput>
                 <div id="imageContainer">
                     {imageSrc && (
